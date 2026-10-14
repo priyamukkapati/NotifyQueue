@@ -1,6 +1,6 @@
 # NotifyQueue
 
-A Java 17 local notification scheduler with duplicate detection, bounded retained events, exponential retry delays, dead-letter outcomes, and manual redrive. An injected transport lets tests simulate outages without sending email or using external services.
+A local retry scheduler for notification events. Delivery is simulated so failed attempts, retry deadlines, and dead-letter outcomes can be tested without an email provider. Requires Java 17 or newer.
 
 ## Run
 
@@ -16,7 +16,7 @@ sh run.sh serve
 
 `serve` runs the small console example; it does not start a network server. The example fails its first simulated delivery and then succeeds on retry.
 
-## API inside the process
+## Working with the queue
 
 | Operation | Behavior |
 | --- | --- |
@@ -29,7 +29,7 @@ Conflicting payloads with the same event ID are rejected. For three attempts and
 
 The retention limit includes pending, delivered, and dead events. Delivered IDs are retained to prevent duplicates; this prototype does not automatically evict them. Once the limit is reached, new IDs are rejected.
 
-## Reliability proof
+## Demo results
 
 `sh run.sh demo` enqueues 1,000 unique events and 1,000 duplicate submissions. Every event fails its first delivery; 10% fail permanently. Advancing virtual time through three deadlines produces:
 
@@ -47,10 +47,6 @@ The injected transport and immutable outcomes separate scheduling from delivery 
 
 Events and deduplication state are entirely in memory and disappear on restart. There is no HTTP API, persistent outbox, broker, email provider, worker lease, jitter, retry classification, or cross-process coordination. A delivery that succeeds remotely but reports an error can be retried and duplicated; the recipient/provider needs its own idempotency support. There is no exactly-once guarantee.
 
-## Next proof
+## Next step
 
-Persist events and outcomes in a database, introduce worker leases, and test a crash after a provider accepts a request but before acknowledgement is stored. Use provider idempotency keys and report both attempts and unique deliveries. Add jitter and separate transient failures from permanent failures.
-
-## Resume description
-
-Java notification scheduler with bounded event retention, exponential backoff, dead-letter handling, and redrive; a deterministic outage demo deduplicated 1,000 repeated submissions and classified 900 deliveries and 100 permanent failures.
+Persist the queue and test a crash between delivery and acknowledgement. That would expose the important distinction between retrying an attempt and delivering a notification twice. Worker leases and provider idempotency keys are possible next additions.
